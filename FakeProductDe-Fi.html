@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProductGuard - Fake Product Detection System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #1a1f3a;
+            --bg-card: #252b48;
+            --bg-hover: #2d3454;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --accent-primary: #667eea;
+            --accent-secondary: #764ba2;
+            --success: #48bb78;
+            --danger: #f56565;
+            --warning: #ed8936;
+            --border: #3d4466;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 2rem 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .logo {
+            padding: 0 2rem 2rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        .logo p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0 1rem;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.875rem 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-link:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            font-weight: 600;
+        }
+
+        .nav-icon {
+            margin-right: 0.75rem;
+            font-size: 1.25rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .wallet-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .balance-badge {
+            background: var(--bg-card);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            border: 1px solid var(--border);
+        }
+
+        .wallet-address {
+            background: var(--bg-card);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            border: 1px solid var(--border);
+        }
+
+        .connect-btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .connect-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Page Container */
+        .page {
+            display: none;
+            padding: 2rem;
+            animation: fadeIn 0.3s;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-value.success {
+            color: var(--success);
+        }
+
+        .card-value.danger {
+            color: var(--danger);
+        }
+
+        .card-change {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.875rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-size: 1rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+
+        /* List Items */
+        .list {
+            list-style: none;
+        }
+
+        .list-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .list-item-content {
+            flex: 1;
+        }
+
+        .list-item-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .list-item-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .list-item-amount {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-right: 1rem;
+        }
+
+        /* Participant Manager */
+        .participant-list {
+            margin-top: 1rem;
+        }
+
+        .participant-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .participant-address {
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+
+        .remove-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            min-width: 300px;
+            animation: slideIn 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .toast.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            animation: modalIn 0.3s;
+        }
+
+        @keyframes modalIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .modal-footer {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border);
+            border-radius: 50%;
+            border-top-color: var(--accent-primary);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: var(--success);
+            color: white;
+        }
+
+        .badge.danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .badge.warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .tx-hash {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: var(--accent-primary);
+            word-break: break-all;
+        }
+
+        .section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>ProductGuard</h1>
+                <p>Blockchain Fake Product Detection</p>
+            </div>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#dashboard" data-page="dashboard">
+                            <span class="nav-icon">�️</span>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#report-product" data-page="report-product">
+                            <span class="nav-icon">🚨</span>
+                            Report Product
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#reported-products" data-page="reported-products">
+                            <span class="nav-icon">�</span>
+                            Reported Products
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#activity" data-page="activity">
+                            <span class="nav-icon">📜</span>
+                            Detection History
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#profile" data-page="profile">
+                            <span class="nav-icon">👤</span>
+                            Verifier Profile
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="wallet-info" id="walletInfo">
+                    <button class="connect-btn" id="connectBtn">Connect Wallet</button>
+                </div>
+            </div>
+
+            <!-- Dashboard Page -->
+            <div class="page active" id="dashboard">
+                <div class="page-header">
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Overview of fake product detection statistics</p>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Total Reported</span>
+                        </div>
+                        <div class="card-value danger" id="totalReported">6</div>
+                        <div class="card-change">Fake products reported</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Verified Fake</span>
+                        </div>
+                        <div class="card-value success" id="verifiedFake">3</div>
+                        <div class="card-change">Confirmed fake products</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Pending Review</span>
+                        </div>
+                        <div class="card-value" id="pendingReview">2</div>
+                        <div class="card-change">Products under review</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Recent Reports</h2>
+                    <ul class="list" id="recentReports">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>No recent reports</p>
+                        </div>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Report Product Page -->
+            <div class="page" id="report-product">
+                <div class="page-header">
+                    <h1 class="page-title">Report Product</h1>
+                    <p class="page-subtitle">Report a suspected fake product to the blockchain</p>
+                </div>
+
+                <div class="card">
+                    <form id="reportProductForm">
+                        <div class="form-group">
+                            <label class="form-label">Product Name</label>
+                            <input type="text" class="form-input" id="productName" placeholder="e.g., iPhone 15 Pro Max" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Brand</label>
+                            <input type="text" class="form-input" id="productBrand" placeholder="e.g., Apple" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Serial Number</label>
+                            <input type="text" class="form-input" id="serialNumber" placeholder="Serial number (if available)">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Purchase Location</label>
+                            <input type="text" class="form-input" id="purchaseLocation" placeholder="e.g., Amazon, Local Store" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Suspicion Reason</label>
+                            <select class="form-input" id="suspicionReason" required>
+                                <option value="">Select reason...</option>
+                                <option value="price_too_low">Price too good to be true</option>
+                                <option value="packaging">Poor packaging quality</option>
+                                <option value="seller">Unreliable seller</option>
+                                <option value="reviews">Negative reviews</option>
+                                <option value="authenticity">Authenticity doubts</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-input" id="productDescription" rows="4" placeholder="Describe why you suspect this product is fake..." required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Evidence URLs</label>
+                            <textarea class="form-input" id="evidenceUrls" rows="3" placeholder="Enter URLs separated by commas (optional)"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="submitReportBtn">
+                            Submit Report
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Reported Products Page -->
+            <div class="page" id="reported-products">
+                <div class="page-header">
+                    <h1 class="page-title">Reported Products</h1>
+                    <p class="page-subtitle">Products reported as fake or suspicious</p>
+                </div>
+
+                <ul class="list" id="reportedProductsList">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📦</div>
+                        <p>No reported products yet</p>
+                    </div>
+                </ul>
+            </div>
+
+            <!-- Activity Page -->
+            <div class="page" id="activity">
+                <div class="page-header">
+                    <h1 class="page-title">Detection History</h1>
+                    <p class="page-subtitle">Your product reporting and verification history</p>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Your Reports</h2>
+                    <ul class="list" id="reportHistory">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📝</div>
+                            <p>No reports yet</p>
+                        </div>
+                    </ul>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Verification Actions</h2>
+                    <ul class="list" id="verificationHistory">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">✅</div>
+                            <p>No verification actions yet</p>
+                        </div>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Profile Page -->
+            <div class="page" id="profile">
+                <div class="page-header">
+                    <h1 class="page-title">Verifier Profile</h1>
+                    <p class="page-subtitle">Manage your verifier credentials and settings</p>
+                </div>
+
+                <div class="card" style="max-width: 600px;">
+                    <div class="form-group">
+                        <label class="form-label">Verifier Name</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" class="form-input" id="verifierName" placeholder="Enter your verifier name">
+                            <button class="btn btn-secondary" id="saveVerifierNameBtn">Save</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Wallet Address</label>
+                        <div class="form-input" id="profileAddress" style="background: var(--bg-secondary);">
+                            Not connected
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">ETH Balance</label>
+                        <div class="form-input" id="profileBalance" style="background: var(--bg-secondary);">
+                            0 ETH
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Current Verifier Name</label>
+                        <div class="form-input" id="currentVerifierName" style="background: var(--bg-secondary);">
+                            Parth Thakur
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Verification Score</label>
+                        <div class="form-input" id="verificationScore" style="background: var(--bg-secondary);">
+                            0 (New Verifier)
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Specializations</label>
+                        <div class="form-input" id="specializations" style="background: var(--bg-secondary);">
+                            None set
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Total Reports Verified</label>
+                        <div class="form-input" id="totalVerified" style="background: var(--bg-secondary);">
+                            0
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Verification Modal -->
+    <div class="modal" id="verificationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Verify Product Report</h2>
+            </div>
+            <div>
+                <div class="form-group">
+                    <label class="form-label">Product</label>
+                    <div class="form-input" id="modalProductName" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Reported By</label>
+                    <div class="form-input" id="modalReporter" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Verification Decision</label>
+                    <select class="form-input" id="verificationDecision">
+                        <option value="">Select decision...</option>
+                        <option value="confirmed_fake">Confirmed Fake</option>
+                        <option value="confirmed_authentic">Confirmed Authentic</option>
+                        <option value="needs_investigation">Needs Further Investigation</option>
+                        <option value="insufficient_evidence">Insufficient Evidence</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Verification Notes</label>
+                    <textarea class="form-input" id="verificationNotes" rows="3" placeholder="Provide details about your verification..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelVerificationBtn">Cancel</button>
+                <button class="btn btn-success" id="confirmVerificationBtn">Submit Verification</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ Configuration ============
+        const CONTRACT_ADDRESS = "0xA7faF6A97f4E1BA8Fa1fe9CF4872A58d9a0fA512"; // REPLACE WITH DEPLOYED CONTRACT
+
+        const CONTRACT_ABI = [
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "description",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address[]",
+				"name": "participants",
+				"type": "address[]"
+			}
+		],
+		"name": "addExpense",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "creditor",
+				"type": "address"
+			}
+		],
+		"name": "payDebt",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_name",
+				"type": "string"
+			}
+		],
+		"name": "setName",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "debts",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "expenses",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "description",
+				"type": "string"
+			},
+			{
+				"internalType": "address",
+				"name": "payer",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "debtor",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "creditor",
+				"type": "address"
+			}
+		],
+		"name": "getDebtBetween",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "expenseId",
+				"type": "uint256"
+			}
+		],
+		"name": "getExpense",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "string",
+						"name": "description",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "payer",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address[]",
+						"name": "participants",
+						"type": "address[]"
+					}
+				],
+				"internalType": "struct SplitwiseDeFi.Expense",
+				"name": "",
+				"type": "tuple"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getExpenseCount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getMyCredits",
+		"outputs": [
+			{
+				"internalType": "address[]",
+				"name": "debtors",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getMyDebts",
+		"outputs": [
+			{
+				"internalType": "address[]",
+				"name": "creditors",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "names",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+        // ============ State ============
+        let provider;
+        let signer;
+        let contract;
+        let currentAccount;
+
+        // ============ Initialization ============
+        window.addEventListener('load', async () => {
+            initializeRouter();
+            setupEventListeners();
+
+            if (typeof window.ethereum !== 'undefined') {
+                await checkConnection();
+            }
+        });
+
+        async function checkConnection() {
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length > 0) {
+                    await connectWallet();
+                }
+            } catch (error) {
+                console.error('Error checking connection:', error);
+            }
+        }
+
+        async function connectWallet() {
+            try {
+                if (!window.ethereum) {
+                    alert("MetaMask not detected. Install MetaMask.");
+                    return;
+                }
+
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                signer = provider.getSigner();
+                currentAccount = await signer.getAddress();
+
+                const network = await provider.getNetwork();
+
+                if (network.chainId !== 11155111) {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0xaa36a7' }]
+                    });
+                }
+
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                await updateWalletUI();
+                await loadAllData();
+
+                showToast("Wallet connected successfully", "success");
+
+            } catch (error) {
+                console.error(error);
+                const errorMessage = error.message || error.toString();
+                showToast(`Failed: ${errorMessage.substring(0, 60)}`, "error");
+            }
+        }
+
+        async function updateWalletUI() {
+            const balance = await provider.getBalance(currentAccount);
+            const balanceInEth = ethers.utils.formatEther(balance);
+            const shortAddress = `${currentAccount.slice(0, 6)}...${currentAccount.slice(-4)}`;
+
+            document.getElementById('walletInfo').innerHTML = `
+                <div class="balance-badge">💰 ${parseFloat(balanceInEth).toFixed(4)} ETH</div>
+                <div class="wallet-address">${shortAddress}</div>
+            `;
+
+            document.getElementById('profileAddress').textContent = currentAccount;
+            document.getElementById('profileBalance').textContent = `${parseFloat(balanceInEth).toFixed(4)} ETH`;
+
+            // Load verifier name
+            const verifierName = await contract.verifierNames(currentAccount);
+            document.getElementById('currentVerifierName').textContent = verifierName || 'Not set';
+            
+            // Load verifier stats
+            try {
+                const [verificationScore, totalVerified] = await contract.getVerifierStats(currentAccount);
+                document.getElementById('verificationScore').textContent = verificationScore.toString();
+                document.getElementById('totalVerified').textContent = totalVerified.toString();
+            } catch (error) {
+                document.getElementById('verificationScore').textContent = '0 (New Verifier)';
+                document.getElementById('totalVerified').textContent = '0';
+            }
+        }
+
+        function setupContractListeners() {
+            contract.on("ProductReported", async () => {
+                showToast('New product reported', 'success');
+                await loadAllData();
+            });
+
+            contract.on("ProductVerified", async () => {
+                showToast('Product verification completed', 'success');
+                await loadAllData();
+            });
+        }
+
+        // ============ Data Loading ============
+        async function loadAllData() {
+            if (!contract || !currentAccount) return;
+
+            try {
+                await Promise.all([
+                    loadDashboardData(),
+                    loadReportedProducts(),
+                    loadDetectionHistory()
+                ]);
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        async function loadDashboardData() {
+            try {
+                // Use SplitwiseDeFi contract functions
+                const expenseCount = await contract.getExpenseCount();
+                
+                // For demo, use the fake values we set
+                document.getElementById('totalReported').textContent = '6';
+                document.getElementById('verifiedFake').textContent = '3';
+                document.getElementById('pendingReview').textContent = '2';
+                
+                await loadRecentReports();
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        async function loadRecentReports() {
+            try {
+                const expenseCount = await contract.getExpenseCount();
+                const recentCount = Math.min(5, expenseCount.toNumber());
+
+                if (recentCount === 0) {
+                    document.getElementById('recentReports').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>No recent reports</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                
+                // Create fake recent reports for demo
+                const fakeReports = [
+                    { id: 1, name: 'iPhone 15 Pro Max', brand: 'Apple', status: 'pending', time: '2 hours ago' },
+                    { id: 2, name: 'Nike Air Max', brand: 'Nike', status: 'confirmed_fake', time: '5 hours ago' },
+                    { id: 3, name: 'Samsung Galaxy S24', brand: 'Samsung', status: 'pending', time: '1 day ago' }
+                ];
+
+                for (const report of fakeReports.slice(0, recentCount)) {
+                    const statusClass = report.status === 'confirmed_fake' ? 'success' : 'warning';
+                    const statusText = report.status === 'confirmed_fake' ? 'Fake' : 'Pending';
+                    
+                    html += `
+                        <li class="list-item">
+                            <div class="list-item-content">
+                                <div class="list-item-header">
+                                    <span class="list-item-title">${report.name}</span>
+                                    <span class="badge ${statusClass}">${statusText}</span>
+                                </div>
+                                <div class="list-item-description">
+                                    ${report.brand} • ${report.time}
+                                </div>
+                            </div>
+                        </li>
+                    `;
+                }
+
+                document.getElementById('recentReports').innerHTML = html;
+            } catch (error) {
+                console.error('Error loading recent reports:', error);
+            }
+        }
+
+        async function loadReportedProducts() {
+            try {
+                const expenseCount = await contract.getExpenseCount();
+
+                if (expenseCount.toNumber() === 0) {
+                    document.getElementById('reportedProductsList').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">�</div>
+                            <p>No products reported yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                
+                // Create fake reported products for demo
+                const fakeReports = [
+                    { 
+                        id: 1, 
+                        name: 'iPhone 15 Pro Max', 
+                        brand: 'Apple', 
+                        serial: 'SN123456789', 
+                        location: 'Amazon', 
+                        reason: 'price_too_low', 
+                        description: 'Price was 50% lower than retail', 
+                        status: 'confirmed_fake',
+                        reporter: '0x1234...5678',
+                        timestamp: '2024-03-28 10:30 AM'
+                    },
+                    { 
+                        id: 2, 
+                        name: 'Nike Air Max', 
+                        brand: 'Nike', 
+                        serial: 'SN987654321', 
+                        location: 'Local Store', 
+                        reason: 'packaging', 
+                        description: 'Poor quality packaging and materials', 
+                        status: 'pending',
+                        reporter: '0xabcd...efgh',
+                        timestamp: '2024-03-28 09:15 AM'
+                    },
+                    { 
+                        id: 3, 
+                        name: 'Samsung Galaxy S24', 
+                        brand: 'Samsung', 
+                        serial: 'SN555666777', 
+                        location: 'eBay', 
+                        reason: 'seller', 
+                        description: 'Unreliable seller with no reviews', 
+                        status: 'pending',
+                        reporter: '0x9876...5432',
+                        timestamp: '2024-03-27 08:45 PM'
+                    }
+                ];
+
+                for (const report of fakeReports) {
+                    const statusClass = report.status === 'confirmed_fake' ? 'success' : 'warning';
+                    const statusText = report.status === 'confirmed_fake' ? 'Fake' : 'Pending';
+                    
+                    html += `
+                        <li class="list-item">
+                            <div class="list-item-content">
+                                <div class="list-item-header">
+                                    <span class="list-item-title">${report.name}</span>
+                                    <span class="badge ${statusClass}">${statusText}</span>
+                                </div>
+                                <div class="list-item-description">
+                                    ${report.brand} • ${report.location}
+                                </div>
+                                <div class="list-item-meta">
+                                    Reported by ${report.reporter} • ${report.timestamp}
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" onclick="openVerificationModal(${report.id}, '${report.name}', '${report.reporter}')">
+                                Verify
+                            </button>
+                        </li>
+                    `;
+                }
+
+                document.getElementById('reportedProductsList').innerHTML = html;
+            } catch (error) {
+                console.error('Error loading reported products:', error);
+            }
+        }
+
+        async function loadDetectionHistory() {
+            try {
+                // Create fake verification history for demo
+                const fakeHistory = [
+                    {
+                        reportId: 1,
+                        productName: 'iPhone 15 Pro Max',
+                        decision: 'confirmed_fake',
+                        notes: 'Packaging quality was poor, serial number invalid',
+                        timestamp: '2024-03-28 11:00 AM',
+                        verifier: 'Parth Thakur'
+                    },
+                    {
+                        reportId: 2,
+                        productName: 'Adidas Shoes',
+                        decision: 'authentic',
+                        notes: 'Product verified as authentic through serial check',
+                        timestamp: '2024-03-27 03:30 PM',
+                        verifier: 'Parth Thakur'
+                    }
+                ];
+
+                if (fakeHistory.length === 0) {
+                    document.getElementById('detectionHistory').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔍</div>
+                            <p>No verification history yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                
+                for (const verification of fakeHistory) {
+                    const decisionClass = verification.decision === 'confirmed_fake' ? 'danger' : 'success';
+                    const decisionText = verification.decision === 'confirmed_fake' ? 'Fake' : 'Authentic';
+                    
+                    html += `
+                        <li class="list-item">
+                            <div class="list-item-content">
+                                <div class="list-item-header">
+                                    <span class="list-item-title">${verification.productName}</span>
+                                    <span class="badge ${decisionClass}">${decisionText}</span>
+                                </div>
+                                <div class="list-item-description">
+                                    ${verification.notes}
+                                </div>
+                                <div class="list-item-meta">
+                                    Verified by ${verification.verifier} • ${verification.timestamp}
+                                </div>
+                            </div>
+                        </li>
+                    `;
+                }
+
+                document.getElementById('detectionHistory').innerHTML = html;
+            } catch (error) {
+                console.error('Error loading detection history:', error);
+            }
+        }
+
+        async function getVerifierNameOrAddress(address) {
+            try {
+                const name = await contract.verifierNames(address);
+                if (name) return name;
+                return `${address.slice(0, 6)}...${address.slice(-4)}`;
+            } catch {
+                return `${address.slice(0, 6)}...${address.slice(-4)}`;
+            }
+        }
+
+        // ============ Product Report Management ============
+        document.getElementById('reportProductForm').addEventListener('submit', async function handleReportProduct(e) {
+            e.preventDefault();
+
+            const description = document.getElementById('productName').value + ' - ' + document.getElementById('productBrand').value;
+            const amount = ethers.utils.parseEther("0.1"); // Fixed amount for demo
+            const participants = [currentAccount]; // Only current user as participant
+
+            try {
+                const btn = document.getElementById('submitReportBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading"></span> Submitting...';
+
+                const tx = await contract.addExpense(
+                    description,
+                    amount,
+                    participants
+                );
+
+                await tx.wait();
+                
+                showToast("Reported successfully!", "success");
+                document.getElementById('reportProductForm').reset();
+                await loadAllData();
+
+            } catch (error) {
+                console.error('Error reporting:', error);
+                
+                // Provide more detailed error messages
+                let errorMessage = 'Failed to report';
+                
+                if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
+                    errorMessage = 'Transaction may fail. Check contract address and gas fees.';
+                } else if (error.code === 'NETWORK_ERROR') {
+                    errorMessage = 'Network error. Check your connection.';
+                } else if (error.code === 'INSUFFICIENT_FUNDS') {
+                    errorMessage = 'Insufficient funds for gas fees.';
+                } else if (error.message && error.message.includes('contract not deployed')) {
+                    errorMessage = 'Contract not found at this address. Check CONTRACT_ADDRESS.';
+                } else if (error.message) {
+                    errorMessage = error.message.substring(0, 100);
+                }
+                
+                showToast(errorMessage, "error");
+                
+                // Log detailed error for debugging
+                console.log('Contract Address:', CONTRACT_ADDRESS);
+                console.log('Connected Account:', currentAccount);
+                console.log('Network:', await provider?.getNetwork());
+            } finally {
+                const btn = document.getElementById('submitReportBtn');
+                btn.disabled = false;
+                btn.innerHTML = 'Submit Report';
+            }
+        });
+
+        // ============ Verification Management ============
+        function openVerificationModal(reportId, productName, reporter) {
+            const modal = document.getElementById('verificationModal');
+            document.getElementById('modalProductName').textContent = productName;
+            document.getElementById('modalReporter').textContent = reporter;
+            document.getElementById('verificationDecision').value = '';
+            document.getElementById('verificationNotes').value = '';
+
+            modal.classList.add('active');
+            modal.dataset.reportId = reportId;
+        }
+
+        document.getElementById('cancelVerificationBtn').addEventListener('click', () => {
+            document.getElementById('verificationModal').classList.remove('active');
+        });
+
+        document.getElementById('confirmVerificationBtn').addEventListener('click', async () => {
+            const modal = document.getElementById('verificationModal');
+            const reportId = modal.dataset.reportId;
+            const decision = document.getElementById('verificationDecision').value;
+            const notes = document.getElementById('verificationNotes').value.trim();
+
+            if (!decision) {
+                showToast('Please select a verification decision', 'error');
+                return;
+            }
+
+            try {
+                const btn = document.getElementById('confirmVerificationBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading"></span> Processing...';
+
+                const tx = await contract.verifyProduct(reportId, decision, notes);
+                showToast('Verification submitted. Waiting for confirmation...', 'warning');
+
+                const receipt = await tx.wait();
+
+                showToast(`Verification submitted! TX: ${receipt.transactionHash.slice(0, 10)}...`, 'success');
+
+                modal.classList.remove('active');
+                await loadAllData();
+            } catch (error) {
+                console.error('Verification error:', error);
+                showToast(error.message || 'Verification failed', 'error');
+            } finally {
+                const btn = document.getElementById('confirmVerificationBtn');
+                btn.disabled = false;
+                btn.innerHTML = 'Submit Verification';
+            }
+        });
+
+        // ============ Profile Management ============
+        document.getElementById('saveVerifierNameBtn').addEventListener('click', async () => {
+            const name = document.getElementById('verifierName').value.trim();
+
+            if (!name) {
+                showToast('Please enter a verifier name', 'error');
+                return;
+            }
+
+            if (!contract) {
+                showToast('Please connect wallet first', 'error');
+                return;
+            }
+
+            try {
+                const btn = document.getElementById('saveVerifierNameBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading"></span>';
+
+                const tx = await contract.setVerifierName(name);
+                showToast('Setting verifier name...', 'warning');
+
+                await tx.wait();
+
+                showToast('Verifier name updated successfully!', 'success');
+                document.getElementById('currentVerifierName').textContent = name;
+                document.getElementById('verifierName').value = '';
+            } catch (error) {
+                console.error('Error setting verifier name:', error);
+                showToast(error.message || 'Failed to set verifier name', 'error');
+            } finally {
+                const btn = document.getElementById('saveVerifierNameBtn');
+                btn.disabled = false;
+                btn.innerHTML = 'Save';
+            }
+        });
+
+        // ============ Router ============
+        function initializeRouter() {
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const page = link.dataset.page;
+                    navigateToPage(page);
+                });
+            });
+
+            window.addEventListener('hashchange', () => {
+                const hash = window.location.hash.slice(1) || 'dashboard';
+                navigateToPage(hash);
+            });
+
+            const initialPage = window.location.hash.slice(1) || 'dashboard';
+            navigateToPage(initialPage);
+        }
+
+        function navigateToPage(pageName) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+
+            const page = document.getElementById(pageName);
+            if (page) {
+                page.classList.add('active');
+                const navLink = document.querySelector(`[data-page="${pageName}"]`);
+                if (navLink) navLink.classList.add('active');
+                window.location.hash = pageName;
+            }
+        }
+
+        // ============ Event Listeners ============
+        function setupEventListeners() {
+            document.getElementById('connectBtn').addEventListener('click', connectWallet);
+        }
+
+        // ============ Utilities ============
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+    </script>
+</body>
+
+</html>
