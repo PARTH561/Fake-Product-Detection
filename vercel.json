@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "Fake-Product-Detection/frontend/FakeProductDe-Fi.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/Fake-Product-Detection/frontend/FakeProductDe-Fi.html"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "splitwise-defi",
+  "version": "1.0.0",
+  "description": "Splitwise DeFi - Decentralized expense sharing application",
+  "main": "Fake-Product-Detection/frontend/FakeProductDe-Fi.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve .",
+    "build": "echo 'Static site - no build needed'"
+  },
+  "keywords": ["defi", "blockchain", "expense", "splitwise", "ethereum"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
